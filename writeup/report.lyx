@@ -1,0 +1,3589 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass IEEEtran
+\begin_preamble
+
+%\usepackage[utf8]{inputenc} % allow utf-8 input
+%\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{smartdiagram}
+
+\usepackage{mathbbol}
+ 
+\usepackage{listings}
+\usepackage{xcolor}
+
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{subcaption}
+
+\usepackage{pgfplots}
+\usepackage{filecontents}
+
+\usepackage{float}
+ 
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+ 
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+ 
+\lstset{style=mystyle}
+
+\usepackage{algorithm,algpseudocode}
+\end_preamble
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Verification Techniques for Pose Graph Optimization
+\end_layout
+
+\begin_layout Author
+pweinger@stanford.edu
+\end_layout
+
+\begin_layout Abstract
+This paper presents a comprehensive analysis of verification techniques
+ for Pose Graph Optimization (PGO).
+ Leveraging the foundational SE-Sync algorithm, we develop custom algorithm
+ implementations and tests for an in-depth evaluation.
+ The PGO problem is transformed into a relaxed Semidefinite Programming
+ (SDP) problem to obtain a quality certificate.
+ From the relaxed SDP solution, we derive a feasible PGO solution.
+ In many practical cases, the relaxed and original problems share the same
+ optimal value, resulting in a quality certificate with tight bounds.
+ However, understanding the limitations of SDP relaxations is crucial.
+ We design custom tests with non-tight bounds to assess the performance
+ of different algorithms.
+ Our main contribution is the exploration of an alternative approach based
+ on Riemannian optimization over a product of SO
+\begin_inset Formula $\left(3\right)$
+\end_inset
+
+ manifolds.
+ When certificate bounds are not tight, this method generally produces superior
+ PGO solutions.
+\end_layout
+
+\begin_layout Section
+Problem Formulation
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+We consider the problem of Pose Graph Optimization (PGO), which consists
+ of estimating a set of poses, rotations, and translations from pairwise
+ relative pose measurements.
+ This problem is typically formulated as a maximum a posteriori (MAP) or
+ maximum-likelihood estimation (MLE) under an assumed probability distribution
+ for the measurement noise, which results in a nonlinear least squares problem.
+ Standard approaches to solving PGO employ iterative methods such as Gauss-Newto
+n or Levenberg-Marquardt, which achieve locally optimal solutions.
+ However, these methods do not guarantee the quality of the solution, as
+ convergence to different local optima can vary depending on the initial
+ conditions.
+ Ideally, we seek to understand how close we are to the global optimum and
+ whether further solution refinement is necessary, especially in safety-critical
+ applications.
+ 
+\end_layout
+
+\begin_layout Standard
+In the past decade, duality-based verification techniques for Simultaneous
+ Localization and Mapping (SLAM) have gained significant attention.
+ A notable advancement in this field is SE-Sync 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+: a certifiably correct algorithm for synchronization over the Special Euclidean
+ Group.
+ SE-Sync leverages Lagrangian duality 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "CvxOptim2004"
+literal "true"
+
+\end_inset
+
+ and Semidefinite Programming (SDP) 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "helmberg2000semidefinite"
+literal "true"
+
+\end_inset
+
+ relaxations to provide optimality bounds.
+ This paper reviews the prior work that led to the development of SE-Sync,
+ analyzes the SE-Sync algorithm itself, and discusses some of the remaining
+ challenges in 2024 related to duality-based verification techniques for
+ PGO.
+\end_layout
+
+\begin_layout Section
+Literature Review 
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "carlone2015duality"
+literal "true"
+
+\end_inset
+
+, Carlone and Dellaert present a technique to verify if a given 2D SLAM
+ solution is globally optimal.
+ They establish lower and upper bounds for the optimal solution, enabling
+ the assessment of the quality of any solution returned by an iterative
+ solver.
+ By re-parameterizing the rotation matrices 
+\begin_inset Formula $R_{i}\in\text{SO}\left(2\right)$
+\end_inset
+
+, they reformulate the initial nonlinear least-squares minimization problem
+ into a Quadratically Constrained Quadratic Programming (QCQP) minimization
+ problem.
+ They reduce the dimensionality of the problem by eliminating the position
+ vectors using the Schur complement.
+ Subsequently, they compute the dual problem of the QCQP, providing a method
+ to verify global optimality.
+\end_layout
+
+\begin_layout Standard
+Lagrangian duality theory provides two key insights: the dual problem is
+ always convex, regardless of the primal problem's nature, and the optimal
+ value of the dual problem offers a lower bound on the primal's optimal
+ value.
+ In cases where strong duality holds, this bound is tight.
+ The dual problem is an SDP (Semidefinite Programming) problem, solvable
+ by off-the-shell convex solvers.
+ Any feasible solution to the primal problem provides an upper bound for
+ the minimization problem, ensuring that the solution quality can be effectively
+ assessed.
+ Experimental results indicate that, in all tested cases, the bound provided
+ by the dual problem was tight, suggesting that strong duality may hold,
+ even if not formally proven.
+ 
+\end_layout
+
+\begin_layout Standard
+However, a significant challenge remains.
+ Pose Graph Optimization (PGO) is a large-scale problem requiring the estimation
+ of thousands of poses, making the dual SDP problem difficult for current
+ off-the-shelf solvers to handle efficiently.
+ With most real datasets, solving the SDP problem required approximately
+ one hour.
+ Despite the appealing quality of the certificate gap, the framework is
+ impractical for real-world application due to the scalability issues of
+ off-the-shelf SDP solvers.
+\end_layout
+
+\begin_layout Standard
+In a follow-up paper 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "carlonelagrangian"
+literal "true"
+
+\end_inset
+
+, the same authors generalize their approach to 3D SLAM.
+ In this work, while re-parameterizing the matrices in 
+\begin_inset Formula $\text{SO}\left(3\right)$
+\end_inset
+
+, they drop the constraint 
+\begin_inset Formula $\det\left(R\right)=1$
+\end_inset
+
+, leading to a QCQP minimization problem where the equality constraints
+ correspond to matrices being part of 
+\begin_inset Formula $\text{O}\left(3\right)$
+\end_inset
+
+ instead of 
+\begin_inset Formula $\text{SO}\left(3\right).$
+\end_inset
+
+ Consequently, the resulting bounds are looser.
+ However, given a candidate solution we can still check if a solution is
+ optimal and still provides a certificate gap, albeit a looser one.
+ Additionally, they introduce a technique to verify whether a candidate
+ solution is optimal without solving a large-scale SDP problem.
+ This method relies on solving a linear system and checking the positive
+ semi-definite nature of a matrix.
+ This test is fast, but the result is binary, qualifying a solution as optimal
+ or not, without providing bounds.
+ Experimental results demonstrate that the bounds are tight when the noise
+ level, modeled as a Gaussian isotropic noise 
+\begin_inset Formula $\mathcal{N}\left(0,\ \sigma_{R}^{2}I\right)$
+\end_inset
+
+, is below a certain threshold 
+\begin_inset Formula $\sigma_{R}=0.1$
+\end_inset
+
+.
+ However, the bounding gap increases as 
+\begin_inset Formula $\sigma_{R}$
+\end_inset
+
+ increases.
+ The certificate quality decreases with increasing noise levels.
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "briales2016fast"
+literal "true"
+
+\end_inset
+
+, Briales and Gonzalez-Jimenez improve upon the results from 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "carlonelagrangian"
+literal "true"
+
+\end_inset
+
+ by providing a novel formulation of the QCQP problem that results in smaller
+ matrices.
+ The previous work systematically uses the Kronecker product to transform
+ matrix products into vector products, resulting in each rotation matrix
+ producing a 
+\begin_inset Formula $9\times9$
+\end_inset
+
+ block.
+ In contrast, this paper employs a trace-based reformulation, keeping the
+ rotation matrices as 
+\begin_inset Formula $3\times3$
+\end_inset
+
+ blocks.
+ Additionally, some diagonal blocks corresponding to constant terms are
+ dropped, leading to sparser matrices.
+ This reformulation preserves the quality of the results while reducing
+ computation time by a factor of 50.
+ However, solving the SDP problem with more than 1000 poses remains prohibitivel
+y slow, requiring more than 15 minutes.
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "briales2017convex"
+literal "true"
+
+\end_inset
+
+, Briales and Gonzalez-Jimenez, and in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "brynte2022tightness"
+literal "true"
+
+\end_inset
+
+, Brynte et al.
+ consider the applicability of these techniques to different problems, including
+ the SLAM front-end.
+ They use these techniques for registration problems (e.g., point cloud registrati
+on) with point-to-point, point-to-line, and point-to-plane correspondences.
+ They also apply them to hand-eye calibration and rotation averaging, to
+ name a few.
+ The fewer poses to estimate, the smaller the SDP problem, and the more
+ applicable these techniques are.
+ 
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "briales2017convex"
+literal "true"
+
+\end_inset
+
+, the authors maintain the constraint 
+\begin_inset Formula $\det\left(R\right)=1$
+\end_inset
+
+ when deriving the QCQP formulation.
+ They replace the default cubic determinant constraint with quadratic constraint
+s in the form of three cross products 
+\begin_inset Formula $R^{\left(i\right)}\times R^{\left(j\right)}=R^{\left(k\right)}$
+\end_inset
+
+ for 
+\begin_inset Formula $i,j,k=\text{cyclic}\left(1,2,3\right)$
+\end_inset
+
+.
+ This ensures that each column of a rotation matrix adheres to the right-hand
+ rule, resulting in a rotation matrix instead of a reflection matrix.
+ Consequently, we have 9 additional constraints per rotation matrix.
+ Adding these constraints remarkably improves the quality of the duality
+ gap.
+ In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "briales2017convex"
+literal "true"
+
+\end_inset
+
+, the authors achieve tight experimental results regarding the duality gap.
+ This approach particularly applies to smaller-scale SDP problems, such
+ as those related to SLAM front-end processing.
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2017computational"
+literal "true"
+
+\end_inset
+
+, Rosen and Carlone design a custom SDP solver to enable fast, real-time
+ computations on large-scale PGO problem sets.
+ Solving the SDP problem requires finding an SDP matrix 
+\begin_inset Formula $Z=VV^{T}$
+\end_inset
+
+ of dimension 
+\begin_inset Formula $dn\times dn$
+\end_inset
+
+, where 
+\begin_inset Formula $d=3$
+\end_inset
+
+ and 
+\begin_inset Formula $n$
+\end_inset
+
+ corresponds to a few thousand poses.
+ However, in practice, the solution 
+\begin_inset Formula $Z$
+\end_inset
+
+ is of rank 
+\begin_inset Formula $r$
+\end_inset
+
+, not much greater than 
+\begin_inset Formula $d.$
+\end_inset
+
+ Thus, the main idea is to search for 
+\begin_inset Formula $Z=V_{nd\times r}V_{r\times nd}^{T}$
+\end_inset
+
+.
+ This approach dramatically reduces the search space size and renders the
+ positive semidefiniteness constraint redundant since 
+\begin_inset Formula $VV^{T}\succeq0$
+\end_inset
+
+ for any choice of 
+\begin_inset Formula $V.$
+\end_inset
+
+ Consequently, the rank-restricted form of the problem becomes a low-dimensional
+ nonlinear program instead of a semidefinite program.
+ In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "burer2003nonlinear"
+literal "true"
+
+\end_inset
+
+, Burer and Monteiro originally proposed a method to solve this problem
+ based on an augmented Lagrangian procedure.
+ However, Rosen, Carlone et al.
+ in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se,rosen2017computational"
+literal "true"
+
+\end_inset
+
+ adopt Riemannian optimization.
+ The problem we have to solve is of the form 
+\begin_inset Formula 
+\[
+\begin{array}{ccc}
+\underset{V\in\mathbb{R}^{dn\times r}}{\min} & \text{Tr}\left(CVV^{T}\right)\\
+s.t. & \text{Tr}\left(A_{i}VV^{T}\right)=b_{i} & i=1,\ldots,m
+\end{array}
+\]
+
+\end_inset
+
+The set 
+\begin_inset Formula 
+\[
+\mathcal{M}=\left\{ V\in\mathbb{R}^{dn\times r}\mid\text{Tr}\left(A_{i}VV^{T}\right)=b_{i},i=1,\ldots,m\right\} 
+\]
+
+\end_inset
+
+ is a smooth Riemannian manifold under certain conditions on 
+\begin_inset Formula $A_{i}$
+\end_inset
+
+, as explained by Majumdar et al.
+ in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "majumdar2020recent"
+literal "true"
+
+\end_inset
+
+.
+ The objective function 
+\begin_inset Formula $V\mapsto\text{Tr}\left(CVV^{T}\right)$
+\end_inset
+
+ is smooth, making this problem a Riemannian optimization problem.
+ If 
+\begin_inset Formula $m<\frac{r\left(r+1\right)}{2},$
+\end_inset
+
+ any second-order critical point is globally optimal and Riemannian trust-region
+ methods can return such a point.
+ These principles underpin the real-time SDP solver presented in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2017computational"
+literal "true"
+
+\end_inset
+
+.
+ In their experiments, the SE-Sync solution 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+, regularly enhanced by their research findings, outperformed 
+\begin_inset CommandInset href
+LatexCommand href
+name "GTSAM"
+target "https://gtsam.org/"
+literal "false"
+
+\end_inset
+
+ regarding speed while providing an optimality certificate.
+ This research culminated in the seminal paper on SE-Sync 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+, which has significantly influenced the field.
+ We have reviewed the origin and evolution of the key concepts described
+ in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "holmes2023semidefinite"
+literal "true"
+
+\end_inset
+
+, Holmes, Dümbgen and Barfoot emphasize that certifiable methods like SE-Sync
+ rely on simplifying assumptions to facilitate problem formulation, notably
+ assuming an isotropic measurement noise distribution.
+ They address a localization problem, specifically estimating a sequence
+ of poses based on measurements from known landmarks using stereo-camera
+ data.
+ The conversion of stereo pixels to Euclidean coordinates results in a noise
+ distribution that should not be modeled isotropically.
+ Consequently, the resulting maximum-likelihood optimization incorporates
+ matrix rather than scalar weighting factors.
+ Their experiments reveal that semidefinite relaxations were tight only
+ at lower noise levels when matrix weighting factors were used instead of
+ scalar ones.
+\end_layout
+
+\begin_layout Section
+Proposed Work
+\end_layout
+
+\begin_layout Standard
+We developed a custom SE-Sync implementation in Python from scratch, detailing
+ the steps involved in transforming the original Pose Graph Optimization
+ (PGO) problem into the final relaxed SDP problem.
+ Our primary objective is to revisit Appendix B of the SE-Sync paper 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+, reformulating the estimation problem from problem 1 to problem 7 in a
+ didactic manner to enhance comprehensibility for a broader audience.
+ To solve the SDP problem, we utilize 
+\begin_inset CommandInset href
+LatexCommand href
+name "pymanopt"
+target "https://pymanopt.org/"
+literal "false"
+
+\end_inset
+
+, a Python toolbox for optimization on Riemannian manifolds.
+ For comparative benchmark results with various SDP solvers (MOSEK, SDPLR,
+ SDPNAL+, STRIDE, ManiSDP), we refer readers to to Wang et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "wang2023solving"
+literal "true"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Understanding the limitations of SDP relaxations is crucial.
+ Therefore, we develop custom tests without tight certificate bounds to
+ evaluate the performance of various algorithms.
+ As our main contribution, we investigate an alternative method based on
+ Riemannian optimization over a product of SO
+\begin_inset Formula $\left(3\right)$
+\end_inset
+
+ manifolds.
+ 
+\end_layout
+
+\begin_layout Section
+Problem Formulation
+\end_layout
+
+\begin_layout Standard
+We consider the following PGO optimization problem:
+\begin_inset Formula 
+\[
+f_{\text{ML}}^{*}=\underset{t_{i},R_{i}}{\min}\underset{\left(i,j\right)\in\mathcal{E}}{\sum}\omega_{t}^{2}\left\Vert t_{j}-t_{i}-R_{i}\tilde{t}_{ij}\right\Vert _{2}^{2}+\frac{\omega_{R}^{2}}{2}\left\Vert R_{j}-R_{i}\tilde{R}_{ij}\right\Vert _{F}^{2}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+with 
+\begin_inset Formula $t_{i}\in\mathbb{R}^{3},R_{i}\in\text{SO}\left(3\right),i\text{, and }j$
+\end_inset
+
+ vertices, and 
+\begin_inset Formula $\mathcal{E}$
+\end_inset
+
+ a set of edges connecting vertices.
+ We note 
+\begin_inset Formula $n$
+\end_inset
+
+ the number of vertices.
+ Via the Kronecker product, we vectorize the rotation matrices to vectors
+ 
+\begin_inset Formula $r_{i}\in\mathbb{R}^{9}$
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{vec}\left(I_{3}R_{i}\tilde{t}_{ij}\right)=\left(\tilde{t}_{ij}^{T}\otimes I_{3}\right)\text{vec}\left(R_{i}\right)=T_{ij}r_{i}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{vec}\left(I_{3}R_{i}\tilde{R}_{ij}\right)=\left(\tilde{R}_{ij}^{T}\otimes I_{3}\right)\text{vec}\left(R_{i}\right)=Q_{ij}r_{i}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Leading to a vectorized form:
+\begin_inset Formula 
+\[
+f_{\text{ML}}^{*}=\underset{t_{i},r_{i}}{\min}\underset{\left(i,j\right)\in\mathcal{E}}{\sum}\omega_{t}^{2}\left\Vert t_{j}-t_{i}-T_{ij}r_{i}\right\Vert _{2}^{2}+\frac{\omega_{R}^{2}}{2}\left\Vert r_{j}-Q_{ij}r_{i}\right\Vert _{2}^{2}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Let 
+\begin_inset Formula $x\in\mathbb{R}^{12n}$
+\end_inset
+
+ denote the vector obtained by vertically stacking all 
+\begin_inset Formula $t_{i}\in\mathbb{R}^{3}$
+\end_inset
+
+ and 
+\begin_inset Formula $r_{i}\in\mathbb{R}^{9}$
+\end_inset
+
+ vertically for 
+\begin_inset Formula $i\in\left[1,n\right]$
+\end_inset
+
+.
+ We construct extractors 
+\begin_inset Formula $B_{ij}\in\mathbb{R}^{3\times12n}$
+\end_inset
+
+ and 
+\begin_inset Formula $C_{ij}\in\mathbb{R}^{9\times12n}$
+\end_inset
+
+ such that: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{cases}
+B_{ij}x=t_{j}-t_{i}-T_{ij}r_{i}\\
+C_{ij}x=r_{j}-Q_{ij}r_{i}
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+With:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{cases}
+B_{ij}=\begin{bmatrix}T_{3\times3}^{ij,1} & \ldots & T_{3\times3}^{ij,n} & Q_{3\times9}^{ij,1} & \ldots & Q_{3\times9}^{ij,n}\end{bmatrix}\\
+T_{3\times3}^{ij,j}=I_{3},T_{3\times3}^{ij,i}=-I_{3},Q_{3\times9}^{ij,1}=-T_{ij},\text{other blocks}=0
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{cases}
+C_{ij}=\begin{bmatrix}0_{9\times3}^{ij,1} & \ldots & O_{9\times3}^{ij,n} & Q_{9\times9}^{ij,1} & \ldots & Q_{9\times9}^{ij,n}\end{bmatrix}\\
+Q_{9\times9}^{ij,j}=I_{9},Q_{9\times9}^{ij,i}=-Q_{ij},Q_{9\times9}^{ij,k}=0\text{ for }k\notin\left\{ i,j\right\} 
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We reformulate the problem as:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{cases}
+f_{\text{ML}}^{*}=\underset{x}{\min}\quad x^{T}Qx\\
+\text{with }x\in\mathbb{R}^{12n},Q\in\mathbb{R}^{12n\times12n}\\
+\text{and Q=\underset{\left(i,j\right)\in\mathcal{E}}{\sum}\omega_{t}^{2}B_{ij}^{T}B_{ij}+\frac{\omega_{R}^{2}}{2}C_{ij}^{T}C_{ij}}
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As 
+\begin_inset Formula $n$
+\end_inset
+
+ typically ranges from a few hundred to several thousand, we aim to reduce
+ the problem's dimensionality as much as possible.
+ To begin, we will eliminate the translation component using the classical
+ Schur complement technique: 
+\begin_inset Formula 
+\[
+f\left(x\right)=f\left(t,r\right)=\begin{bmatrix}t & r\end{bmatrix}^{T}\begin{bmatrix}Q_{tt} & Q_{tr}\\
+Q_{rt} & Q_{rr}
+\end{bmatrix}\begin{bmatrix}t\\
+r
+\end{bmatrix}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+f\left(t,r\right)=t^{T}Q_{tt}t+2r^{T}Q_{rt}t+r^{T}A_{rr}r
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+An optimality condition is:
+\begin_inset Formula 
+\[
+\frac{\partial f}{\partial t}\left(t,r\right)=2Q_{tt}t+2A_{rt}^{T}r=0
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Leading to:
+\begin_inset Formula 
+\[
+t^{*}=-Q_{tt}^{-1}Q_{tr}r
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+By substituting back into 
+\begin_inset Formula $f$
+\end_inset
+
+ we get:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+f\left(x\right)=f\left(r\right)=r^{T}\left(Q_{rr}-Q_{rt}Q_{tt}^{-1}Q_{tr}\right)r
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Resulting in a lower dimension problem:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{cases}
+f_{\text{ML}}^{*}=\underset{r}{\min}\quad r^{T}Q_{r}r\\
+\text{with }r\in\mathbb{R}^{9n},Q_{r}\in\mathbb{R}^{9n\times9n}\\
+\text{and \ensuremath{Q_{r}=Q_{rr}-Q_{rt}Q_{tt}^{-1}Q_{tr}}}
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We further reduce the problem dimensionality by noticing that 
+\begin_inset Formula $Q_{r}\in\mathbb{R}^{9n\times9n}$
+\end_inset
+
+ can be reduced to 
+\begin_inset Formula $\tilde{Q}\in\mathbb{R}^{3n\times3n}$
+\end_inset
+
+ .
+ As we started with:
+\begin_inset Formula 
+\[
+Q_{ij}r_{i}=\left(\tilde{R}_{ij}^{T}\otimes I_{3}\right)\text{vec}\left(R_{i}\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We actually have:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+Q_{r}=\tilde{Q}\otimes I_{3}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We also prove that:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+r^{T}Q_{r}r=\text{Trace}\left(\tilde{Q}R^{T}R\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+With 
+\begin_inset Formula $R_{i}\in\text{SO}\left(3\right),R=\begin{bmatrix}R_{1} & \ldots & R_{n}\end{bmatrix}\in\mathbb{R}^{3\times3n},\tilde{Q}\in\mathbb{R}^{3n\times3n}$
+\end_inset
+
+, we have 
+\begin_inset Formula $\text{vec}\left(R\right)=r$
+\end_inset
+
+.
+ From elementary properties:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{cases}
+\text{Trace}\left(A^{T}B\right)=\text{vec}\left(A\right)^{T}\text{vec}\left(B\right)\\
+\text{vec}\left(AXB\right)=\left(B^{T}\otimes A\right)\text{vec}\left(X\right)
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We derive: 
+\begin_inset Formula 
+\[
+\text{Trace}\left(R^{T}\left(AXB\right)\right)=\text{vec}\left(R\right)^{T}\left(B^{T}\otimes A\right)\text{vec}\left(X\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+With 
+\begin_inset Formula $A=I_{3},X=R_{3\times3n},B=\tilde{Q}^{T}=\tilde{Q}_{3n\times3n}$
+\end_inset
+
+, we obtain:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{Trace}\left(R^{T}R\tilde{Q}\right)=\text{vec}\left(R\right)^{T}\left(\tilde{Q}\otimes I_{3}\right)\text{vec}\left(R\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\text{Trace}\left(\tilde{Q}R^{T}R\right)=r^{T}Q_{r}r
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Leading to our final problem formulation:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{cases}
+f_{\text{ML}}^{*}=\underset{R}{\min}\quad\text{Trace}\left(\tilde{Q}R^{T}R\right)\\
+\text{with }R\in\text{SO}\left(3\right)^{n},\tilde{Q}\in\text{Sym}\left(3n\right)
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+By taking 
+\begin_inset Formula $X=R^{T}R\succeq0$
+\end_inset
+
+, this problem can be reformulated as a Semidefinite Programming problem.
+ We relax the constraint 
+\begin_inset Formula $R\in\text{SO}\left(3\right)^{n}$
+\end_inset
+
+ to 
+\begin_inset Formula $R\in\text{O}\left(3\right)^{n}$
+\end_inset
+
+ leading to 
+\begin_inset Formula $X$
+\end_inset
+
+ with identity diagonal blocks corresponding to 
+\begin_inset Formula $R_{i}^{T}R_{i}=I_{3}$
+\end_inset
+
+ We also know that 
+\begin_inset Formula $R$
+\end_inset
+
+ is of rank 3, thus 
+\begin_inset Formula $X=R^{T}R$
+\end_inset
+
+ is of rank 
+\begin_inset Formula $3$
+\end_inset
+
+.
+ But in the below SDP formulation we ignore the constraint 
+\begin_inset Formula $\text{rank}\left(X\right)=3$
+\end_inset
+
+ to get a convex problem.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{cases}
+f_{\text{SDP}}^{*}=\underset{X\in\text{Sym}\left(3n\right)}{\min}\quad\text{Trace}\left(\tilde{Q}X\right)\\
+\text{s.t.}\ X=\begin{bmatrix}I_{3} & * & *\\
+* & \ddots & *\\
+* & * & I_{3}
+\end{bmatrix}\succeq0
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This is indeed a convex SDP problem.
+ The objective is linear in 
+\begin_inset Formula $X.$
+\end_inset
+
+ The set of PSD matrices is convex.
+ The set of matrices that are positive semidefinite and have 
+\begin_inset Formula $I_{3}$
+\end_inset
+
+ diagonal blocks is convex.
+ If we consider two matrices 
+\begin_inset Formula $X_{1},X_{2}$
+\end_inset
+
+ PSD with 
+\begin_inset Formula $I_{3}$
+\end_inset
+
+ diagonal blocks then 
+\begin_inset Formula $\lambda X_{1}+\left(1-\lambda\right)X_{2}$
+\end_inset
+
+ is PSD and still has 
+\begin_inset Formula $I_{3}$
+\end_inset
+
+ diagonal blocks.
+ Thus we can find a global optimum to 
+\begin_inset Formula $f_{\text{SDP}}$
+\end_inset
+
+.
+ By solving these two problems 
+\begin_inset Formula $f_{\text{ML}}^{*}\text{ and }f_{\text{SDP}}^{*},$
+\end_inset
+
+ we not only get a solution for our initial PGO problem, but we also get
+ a quality certificate.
+ The initial problem 
+\begin_inset Formula $f_{\text{ML}}^{*}$
+\end_inset
+
+ is a non convex problem as the constraints are non convex.
+ By solving 
+\begin_inset Formula $f_{\text{ML}}^{*}$
+\end_inset
+
+ we are only guaranteed to converge to a local minimum.
+ There may be better solutions, but no other solution can reach a lower
+ bound than the SDP convex relaxation 
+\begin_inset Formula $f_{\text{SDP}}^{*}$
+\end_inset
+
+.
+ If 
+\begin_inset Formula $f_{\text{ML}}^{*}=f_{\text{SDP}}^{*}$
+\end_inset
+
+ we are certified to have found a global minimizer for our initial PGO problem.
+ This relaxed SDP problem can be derived in an alternative way, by computing
+ the dual of the dual of the original 
+\begin_inset Formula $f_{\text{ML }}$
+\end_inset
+
+ problem, as demonstrated in section 4 and B4 of 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Section
+Solution methods
+\end_layout
+
+\begin_layout Standard
+We will solve this problem in three different ways, providing additionally
+ a lower bound for the a priori unknown optimal solution.
+\end_layout
+
+\begin_layout Standard
+While PGO problems are typically solved with Non Linear Least Squares methods
+ like e.g.
+ Levenberg-Marquardt method we investigate optimization on Riemannian Manifolds.
+\end_layout
+
+\begin_layout Subsection
+Solving 
+\begin_inset Formula $f_{\text{SDP }}$
+\end_inset
+
+ and 
+\begin_inset Formula $f_{\text{ML }}$
+\end_inset
+
+ with Semidefinite Programming
+\end_layout
+
+\begin_layout Standard
+To solve 
+\begin_inset Formula $f_{\text{SDP}}^{*}$
+\end_inset
+
+, a convex SDP problem, we will first use 
+\begin_inset CommandInset href
+LatexCommand href
+name "cvxpy"
+target "https://www.cvxpy.org/"
+literal "false"
+
+\end_inset
+
+ with the 
+\begin_inset CommandInset href
+LatexCommand href
+name "SCS"
+target "https://www.cvxgrp.org/scs/"
+literal "false"
+
+\end_inset
+
+ solver.
+ This method may struggle to scale to larger problems with 
+\begin_inset Formula $n$
+\end_inset
+
+ above a few hundred.
+ 
+\end_layout
+
+\begin_layout Standard
+After obtaining a solution for 
+\begin_inset Formula $f_{\text{SDP }}^{*},$
+\end_inset
+
+ which is a relaxed version of our PGO problem, we will extract a feasible
+ solution for 
+\begin_inset Formula $f_{\text{ML}}$
+\end_inset
+
+.
+ The solution to 
+\begin_inset Formula $f_{\text{SDP}}^{*}$
+\end_inset
+
+ is a matrix 
+\begin_inset Formula $X$
+\end_inset
+
+ of size 
+\begin_inset Formula $3n\times3n$
+\end_inset
+
+ which we want to factorize as 
+\begin_inset Formula $X=R^{T}R\text{ with }R\in\text{SO}\left(3\right)^{n}\text{ of size }3\times3n$
+\end_inset
+
+ We perform a SVD decomposition of 
+\begin_inset Formula $X=U\Sigma V^{T}$
+\end_inset
+
+.
+ Since 
+\begin_inset Formula $R$
+\end_inset
+
+ is of rank 
+\begin_inset Formula $3$
+\end_inset
+
+, we reconstruct 
+\begin_inset Formula $R$
+\end_inset
+
+ with the 3 largest singular values and their corresponding singular vectors.
+ Let 
+\begin_inset Formula $U_{i}$
+\end_inset
+
+ be the 
+\begin_inset Formula $i^{th}$
+\end_inset
+
+ column of 
+\begin_inset Formula $U$
+\end_inset
+
+, then: 
+\begin_inset Formula 
+\[
+R=\begin{bmatrix}\sqrt{\sigma_{1}}V_{1}^{T} & \sqrt{\sigma_{2}}V_{2}^{T} & \sqrt{\sigma_{3}}V_{3}^{T}\end{bmatrix}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To obtain the nearest rotation matrix, we perform a subsequent SVD decomposition
+:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+R=U_{r}\Sigma_{r}V_{r}^{T}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This gives:
+\begin_inset Formula 
+\[
+R_{\text{nearest rotation}}=U_{r}V_{r}^{T}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+If 
+\begin_inset Formula $\det\left(U_{r}V_{r}^{T}\right)<0$
+\end_inset
+
+, we adjust the sign of the last column of 
+\begin_inset Formula $U_{r}$
+\end_inset
+
+, to convert the reflection to a rotation.
+\end_layout
+
+\begin_layout Subsection
+Solving 
+\begin_inset Formula $f_{\text{ML}}$
+\end_inset
+
+ with Riemannian optimization over a 
+\begin_inset Formula $\text{SO}\left(3\right)$
+\end_inset
+
+ manifold
+\end_layout
+
+\begin_layout Standard
+We begin by introducing the concept of Riemannian optimization over a manifold.
+ A manifold is a concept in mathematics that generalizes the idea of surfaces
+ to higher dimensions.
+ Formally, a manifold is a topological space that locally resembles a Euclidean
+ space e.g.
+ 
+\begin_inset Formula $\mathbb{R}^{n}$
+\end_inset
+
+.
+ Each point on a manifold has a neighborhood that can be mapped to an open
+ subset of 
+\begin_inset Formula $\mathbb{R}^{n}$
+\end_inset
+
+ via a continuous, bijective function called a chart.
+ A chart is a pair 
+\begin_inset Formula $\left(U,\phi\right)$
+\end_inset
+
+ where 
+\begin_inset Formula $U$
+\end_inset
+
+ is an open subset of the manifold and 
+\begin_inset Formula $\phi:U\rightarrow\mathbb{R}^{n}$
+\end_inset
+
+ is a homeomorphism (a continuous function with a continuous inverse) mapping
+ 
+\begin_inset Formula $U$
+\end_inset
+
+ to an open subset of 
+\begin_inset Formula $\mathbb{R}^{n}$
+\end_inset
+
+.
+ An atlas is a collection of such charts covering the entire manifold.
+ The dimension of a manifold is the dimension of the Euclidean space that
+ it locally resembles.
+ A smooth manifold has an atlas with differentiable transition maps.
+ A Riemannian manifold is a smooth manifold with an inner product on the
+ tangent space at each point.
+ 
+\begin_inset Formula $\text{SO}\left(3\right)$
+\end_inset
+
+ is a 3-dimensional smooth manifold.
+ The exponential map relates the tangent space at a point to the manifold
+ itself, moving a tangent vector along a geodesic.
+ Geodesics are the shortest paths between points.
+ On 
+\begin_inset Formula $\text{SO}\left(3\right),$
+\end_inset
+
+ they are given by 
+\begin_inset Formula $R\left(t\right)=R_{0}\exp\left(t\hat{w}\right)$
+\end_inset
+
+ where 
+\begin_inset Formula $R_{0}$
+\end_inset
+
+ is the initial point, 
+\begin_inset Formula $\hat{w}$
+\end_inset
+
+ is a constant skew-symmetric matrix and 
+\begin_inset Formula $t$
+\end_inset
+
+ a parameter.
+ 
+\end_layout
+
+\begin_layout Standard
+Riemannian optimization involves optimizing over Riemannian manifolds, reformula
+ting problems as unconstrained problems and leveraging the natural geometry
+ of the problem for potentially faster convergence, compared to general-purpose
+ solvers.
+\end_layout
+
+\begin_layout Standard
+We use 
+\begin_inset CommandInset href
+LatexCommand href
+name "pymanopt"
+target "https://pymanopt.org/"
+literal "false"
+
+\end_inset
+
+ toolbox to solve 
+\begin_inset Formula $f_{\text{ML}}^{*}$
+\end_inset
+
+.
+ By employing a first-order unconstrained optimizer, such as Conjugate Gradient,
+ we aim to handle large-scale problems effectively.
+ Additionally, we will experiment with a second-order Trust Region method.
+ The information we need to provide to the solver includes the cost function
+ 
+\begin_inset Formula $\min\ \text{Trace}\left(\tilde{Q}R^{T}R\right)$
+\end_inset
+
+, the gradient function 
+\begin_inset Formula $2\ R\tilde{Q}$
+\end_inset
+
+, the hessian function 
+\begin_inset Formula $2\ \tilde{Q}$
+\end_inset
+
+ for the second-order method, and the manifold we want to operate on, which
+ is actually a product of 
+\begin_inset Formula $n\ \text{SO}\left(3\right)$
+\end_inset
+
+ manifolds.
+ Products of manifolds are indeed manifolds.
+ 
+\end_layout
+
+\begin_layout Subsection
+Solving 
+\begin_inset Formula $f_{\text{SDP }}$
+\end_inset
+
+and 
+\begin_inset Formula $f_{\text{ML }}$
+\end_inset
+
+ with Riemannian optimization over a Stiefel manifold
+\end_layout
+
+\begin_layout Standard
+SDP solvers do not scale for 
+\begin_inset Formula $n\geq1000$
+\end_inset
+
+ when dealing with:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{cases}
+f_{\text{SDP}}^{*}=\underset{X\in\text{Sym}\left(3n\right)}{\min}\quad\text{Trace}\left(\tilde{Q}X\right)\\
+\text{s.t.}\ X\succeq0,\text{blocks diagonal}X_{ii}=I_{3}
+\end{cases}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We note that we should expect low-rank solutions.
+ As demonstrated by Pataki in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "pataki1998rank"
+literal "true"
+
+\end_inset
+
+, the problem has a solution of 
+\begin_inset Formula $\text{rank\ensuremath{\leq\sqrt{n\left(d+1\right)}}}$
+\end_inset
+
+.
+ Additionally, our underlying problem calls for a low-rank solution: we
+ replaced 
+\begin_inset Formula $R^{T}R$
+\end_inset
+
+ of rank 
+\begin_inset Formula $3$
+\end_inset
+
+ with 
+\begin_inset Formula $X$
+\end_inset
+
+.
+ The SDP low-rank idea from Burer et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "burer2003nonlinear"
+literal "true"
+
+\end_inset
+
+ involves factorizing 
+\begin_inset Formula $X$
+\end_inset
+
+ with a tall and skinny matrix 
+\begin_inset Formula $Y$
+\end_inset
+
+, leading to:
+\begin_inset Formula 
+\[
+\begin{array}{cc}
+\underset{Y}{\min} & \text{Trace}\left(QYY^{T}\right)\\
+s.t. & X=YY^{T}\\
+ & Y\in\mathbb{R}^{n\times p}\text{ leading to rank}\left(X\right)\leq p
+\end{array}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This approach dramatically reduces the size of the search space and makes
+ the PSD constraint redundant, since 
+\begin_inset Formula $YY^{T}\succeq0$
+\end_inset
+
+.
+ However, the resulting rank-restricted form of the problem is no longer
+ an SDP problem and is no longer convex.
+ Instead, we are dealing with a low-dimensional nonlinear program.
+ In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "boumal2015riemannian,boumal2016non"
+literal "true"
+
+\end_inset
+
+, Boumal et al.
+ derived the Riemannian staircase algorithm to solve this problem.
+\end_layout
+
+\begin_layout Standard
+We us the following change of variable: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{array}{ccc}
+X=X^{T}\succeq0 &  & \exists Y\in\mathbb{R}^{n\times p}\text{ such that}X=YY^{T}\\
+\text{rank}\left(X\right)\leq p & \text{changed to} & Y=\begin{bmatrix}Y_{1}\\
+\vdots\\
+Y_{n}
+\end{bmatrix},Y_{i}\in\mathbb{R}^{3\times p}\\
+X_{ii}=I_{3}\forall i &  & Y_{i}Y_{i}^{T}=I_{3}\forall i
+\end{array}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $Y_{i}$
+\end_inset
+
+ is 
+\begin_inset Formula $3\times p$
+\end_inset
+
+ orthonormal for 
+\begin_inset Formula $i=1,\ldots,m$
+\end_inset
+
+ and belongs to a Stiefel manifold whereas 
+\begin_inset Formula $Y\text{ belongs to a}\text{ Stiefel}\left(3,p\right)^{n}$
+\end_inset
+
+ manifold.
+ Boumal et al.
+ established a connection between these two problems:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+\begin{array}{ccc}
+\text{linear, convex} &  & \text{non linear, non convex}\\
+\underset{X}{\min}f\left(X\right) &  & \underset{Y}{\min}f\left(YY^{Y}\right)\\
+X\succeq0,X_{ii}=I_{d} &  & Y\in\text{Stiefel}\left(d,p\right)^{n}
+\end{array}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+If 
+\begin_inset Formula $Y$
+\end_inset
+
+ is a local minimizer of the nonlinear program and if 
+\begin_inset Formula $Y$
+\end_inset
+
+ is rank deficient or if 
+\begin_inset Formula $Y$
+\end_inset
+
+ is square then 
+\begin_inset Formula $X=YY^{T}$
+\end_inset
+
+ is a global minimizer of the initial convex program.
+ 
+\end_layout
+
+\begin_layout Standard
+This leads to the Riemannian Staircase Algorithm:
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{enumerate}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+item Set 
+\backslash
+( p = d + 1 
+\backslash
+).
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+item Compute 
+\backslash
+( Y_p 
+\backslash
+), a Riemannian local optimizer.
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+item If 
+\backslash
+( Y_p 
+\backslash
+) is rank deficient, stop.
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+item Otherwise, increase 
+\backslash
+( p 
+\backslash
+) and go to step 2.
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{enumerate}
+\end_layout
+
+\begin_layout Plain Layout
+
+This is guaranteed to return a globally optimal 
+\backslash
+( X 
+\backslash
+).
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+We initially attempted to implement this algorithm using 
+\begin_inset CommandInset href
+LatexCommand href
+name "pymanopt"
+target "https://pymanopt.org/"
+literal "false"
+
+\end_inset
+
+.
+ However, we had to switch to the 
+\begin_inset CommandInset href
+LatexCommand href
+name "matlab manopt"
+target "https://www.manopt.org/"
+literal "false"
+
+\end_inset
+
+ version because the manifold 
+\begin_inset Formula $\text{Stiefel}\left(d,p\right)^{n}$
+\end_inset
+
+ in the python version does not support 
+\begin_inset Formula $p>d$
+\end_inset
+
+.
+ The Matlab version supports this via a dedicated stiefelstackedfactory
+ manifold.
+ After solving 
+\begin_inset Formula $f_{\text{SDP}},$
+\end_inset
+
+ we use the same technique presented above, based on SVD decomposition,
+ to retrieve a feasible solution for 
+\begin_inset Formula $f_{\text{ML}}.$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Experiments
+\end_layout
+
+\begin_layout Standard
+We provide an implementation for the three algorithms described above in
+ 
+\begin_inset CommandInset href
+LatexCommand href
+name "SORI"
+target "https://github.com/PhilippeW83440/SORI"
+literal "false"
+
+\end_inset
+
+ and benchmark them against SE-Sync.
+ Our evaluation consists of two batches of tests.
+ The first batch uses the test suite provided by SE-Sync, while the second
+ batch includes a custom set of tests that we developed.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{figure}[H]
+\end_layout
+
+\begin_layout Plain Layout
+
+    %
+\backslash
+centering
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+begin{subfigure}[b]{0.49
+\backslash
+columnwidth}  % Increase width to 0.49
+\backslash
+columnwidth
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+centering
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+includegraphics[width=
+\backslash
+textwidth]{imgs/grid1.png}
+\end_layout
+
+\begin_layout Plain Layout
+
+        %
+\backslash
+caption{Grid3D N=4 test}
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+label{fig:first}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+end{subfigure}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+hfill
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+begin{subfigure}[b]{0.49
+\backslash
+columnwidth}  % Increase width to 0.49
+\backslash
+columnwidth
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+centering
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+includegraphics[width=
+\backslash
+textwidth]{imgs/garage1.png}
+\end_layout
+
+\begin_layout Plain Layout
+
+        %
+\backslash
+caption{Parking-garage test}
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+label{fig:second}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+end{subfigure}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+caption{Grid3D N=4 and parking-garage tests}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+label{fig:combined}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{figure}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Our custom tests include a random test and a scalable 3D grid path test.
+ In the 3D grid path test, we simulate a robot navigating from one corner
+ of a cube to the opposite corner, sequentially visiting all integer coordinate
+ points within the cube.
+ While the robot's 3D position evolves regularly, its orientation is randomly
+ generated at each time step.
+ Relative measurements are obtained by adding Gaussian noise with 
+\begin_inset Formula $\sigma_{T}=0.1$
+\end_inset
+
+ m for translations and 
+\begin_inset Formula $\sigma_{R}=0.05\ \text{rad}$
+\end_inset
+
+ for rotations.
+ Additionally, loop closures are introduced between nearby points with a
+ probability of 
+\begin_inset Formula $0.3$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+In all cases and for all algorithms, we start with a random solution to
+ increase the problem's difficulty and to verify the repeatability of the
+ SDP solutions.
+ The results of the tests are presented below.
+ We evaluate the solutions obtained for the 
+\begin_inset Formula $f_{\text{SDP}}$
+\end_inset
+
+ and 
+\begin_inset Formula $f_{\text{ML }}$
+\end_inset
+
+ problems, as well as the run time performance of the different algorithms.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{table}[h]
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+caption{SE-Sync tests}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+resizebox{
+\backslash
+columnwidth}{!}{
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{tabular}{cccccc}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+toprule
+\end_layout
+
+\begin_layout Plain Layout
+
+Dataset & Sol.
+ & $
+\backslash
+hat{f}_{
+\backslash
+text{SDP}}$ & $
+\backslash
+hat{f}_{
+\backslash
+text{ML}}$ & $
+\backslash
+left| 
+\backslash
+frac{
+\backslash
+hat{f}_{
+\backslash
+text{SDP}} - 
+\backslash
+hat{f}_{
+\backslash
+text{ML}}}{
+\backslash
+hat{f}_{
+\backslash
+text{SDP}}} 
+\backslash
+right|$ & Time
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{tinyGrid3D 
+\backslash
+
+\backslash
+ $n=9$ 
+\backslash
+
+\backslash
+ $m=11$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & $18.52$ & $18.52$ & $0$ & 0.05 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $18.52$ & $0$ & 0.08 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $18.52$ & $18.52$ & $0$ & 0.03 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $18.52$ & $18.52$ & $0$ & 0.13 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{smallGrid3D 
+\backslash
+
+\backslash
+ $n=125$ 
+\backslash
+
+\backslash
+ $m=297$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & $1025.4$ & $1025.4$ & $0$ & 167 s s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $1025.4$ & $0$ & 3.4 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $1025.4$ & $1025.4$ & $0$ & 0.3 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $1025.4$ & $1025.4$ & $0$ & 0.35 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{parking 
+\backslash
+
+\backslash
+ $n=1661$ 
+\backslash
+
+\backslash
+ $m=6275$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & - & - & - & -
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $369$ & $282 
+\backslash
+%$ & 600 s time out
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $1.37$ & $1.37$ & $0$ & 188 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $1.26$ & $1.26$ & $0$ & 206 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+bottomrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{tabular}
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{table}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{table}[H]
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+centering
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+caption{Custom tests}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+resizebox{
+\backslash
+columnwidth}{!}{
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{tabular}{cccccc}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+toprule
+\end_layout
+
+\begin_layout Plain Layout
+
+Dataset & Sol.
+ & $
+\backslash
+hat{f}_{
+\backslash
+text{SDP}}$ & $
+\backslash
+hat{f}_{
+\backslash
+text{ML}}$ & $
+\backslash
+left| 
+\backslash
+frac{
+\backslash
+hat{f}_{
+\backslash
+text{SDP}} - 
+\backslash
+hat{f}_{
+\backslash
+text{ML}}}{
+\backslash
+hat{f}_{
+\backslash
+text{SDP}}} 
+\backslash
+right|$ & Time
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{random 
+\backslash
+
+\backslash
+ $n=9$ 
+\backslash
+
+\backslash
+ $m=25$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & $25716$ & $27587$ & $7.3
+\backslash
+%$ & 0.05 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $
+\backslash
+textbf{26947}$ & $
+\backslash
+textbf{4.8
+\backslash
+%}$ & 0.19 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $25716$ & $27587$ & $7.3
+\backslash
+%$ & 0.03 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $25716$ & $27587$ & $7.3
+\backslash
+%$ & 0.03 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{Grid3D N=2 
+\backslash
+
+\backslash
+ $n=27$ 
+\backslash
+
+\backslash
+ $m=30$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & $1549$ & $1549$ & $0$ & 4.6 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $2158$ & $39.3
+\backslash
+%$ & 0.78 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $1549$ & $1549$ & $0$ & 0.26 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $1549$ & $1549$ & $0$ & 0.29 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{Grid3D N=3 
+\backslash
+
+\backslash
+ $n=64$ 
+\backslash
+
+\backslash
+ $m=81$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & $6760$ & $11181$ & $65.4
+\backslash
+%$ & 66.0 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $
+\backslash
+textbf{10292}$ & $
+\backslash
+textbf{52.2
+\backslash
+%}$ & 2.64 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $6760$ & $1549$ & $65.4
+\backslash
+%$ & 0.6 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $6760$ & $11166$ & $65.4
+\backslash
+%$ & 0.6 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{Grid3D N=4 
+\backslash
+
+\backslash
+ $n=125$ 
+\backslash
+
+\backslash
+ $m=283$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & $65355$ & $78523$ & $20.1
+\backslash
+%$ & 428.0 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $
+\backslash
+textbf{74597}$ & $
+\backslash
+textbf{14.1
+\backslash
+%}$ & 7.15 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $65352$ & $78534$ & $20.1
+\backslash
+%$ & 2.2 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $65352$ & $78534$ & $20.1
+\backslash
+%$ & 2.1 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{Grid3D N=5 
+\backslash
+
+\backslash
+ $n=216$ 
+\backslash
+
+\backslash
+ $m=482$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & $109424$ & $136109$ & $26.2
+\backslash
+%$ & 600 s timeout
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $
+\backslash
+textbf{131774}$ & $
+\backslash
+textbf{22.1
+\backslash
+%}$ & 22.1 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $107918$ & $137259$ & $27.1
+\backslash
+%$ & 3.2 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $107947$ & $137259$ & $27.1
+\backslash
+%$ & 3.1 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{Grid3D N=6 
+\backslash
+
+\backslash
+ $n=343$ 
+\backslash
+
+\backslash
+ $m=783$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & - & - & - & -
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $
+\backslash
+textbf{222550}$ & $
+\backslash
+textbf{22.1
+\backslash
+%}$ & 22.1 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $190437$ & $254583$ & $16.9
+\backslash
+%$ & 4.5 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $190400$ & $254583$ & $33.7
+\backslash
+%$ & 4.4 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{Grid3D N=7 
+\backslash
+
+\backslash
+ $n=512$ 
+\backslash
+
+\backslash
+ $m=1140$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & - & - & - & -
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $
+\backslash
+textbf{306603}$ & $
+\backslash
+textbf{22.1
+\backslash
+%}$ & 50.1 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $260027$ & $365511$ & $40.5
+\backslash
+%$ & 13.0 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $260027$ & $365511$ & $40.5
+\backslash
+%$ & 8.5 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{Grid3D N=8 
+\backslash
+
+\backslash
+ $n=729$ 
+\backslash
+
+\backslash
+ $m=1686$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & - & - & - & -
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $
+\backslash
+textbf{469889}$ & $
+\backslash
+textbf{16.2
+\backslash
+%}$ & 93.2 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $404610$ & $541615$ & $33.9
+\backslash
+%$ & 24.4 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $404494$ & $541590$ & $33.9
+\backslash
+%$ & 14.2 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+midrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+multirow{3}{*}{
+\backslash
+shortstack{Grid3D N=9 
+\backslash
+
+\backslash
+ $n=1000$ 
+\backslash
+
+\backslash
+ $m=2280$}} 
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp scs & - & - & - & -
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & riemann so(3) & - & $
+\backslash
+textbf{618526}$ & $
+\backslash
+textbf{18.4
+\backslash
+%}$ & 115.3 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & sdp staircase & $522279$ & $707652$ & $35.4
+\backslash
+%$ & 26.7 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+ & se-sync & $522548$ & $707672$ & $35.4
+\backslash
+%$ & 14.2 s
+\backslash
+
+\backslash
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+bottomrule
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{tabular}
+\end_layout
+
+\begin_layout Plain Layout
+
+}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{table}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As expected, the standard SDP solvers do not scale well for the PGO problem.
+ To address this, we employ the SDP low-rank staircase algorithm, which
+ is highly efficient and allows us to derive a feasible solution to the
+ 
+\begin_inset Formula $f_{\text{ML }}$
+\end_inset
+
+ problem from an 
+\begin_inset Formula $f_{\text{SDP}}$
+\end_inset
+
+ solution.
+ For the SE-sync batch of tests, this approach proves to be the preferred
+ solution, as the bounds are consistently tight, yielding 
+\begin_inset Formula $f_{\text{SDP}}^{*}=f_{\text{ML}}^{*}.$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{figure}[H]
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+centering
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+begin{tikzpicture}[scale=0.7, transform shape]
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+begin{semilogxaxis}[
+\end_layout
+
+\begin_layout Plain Layout
+
+            xlabel={n vertices},
+\end_layout
+
+\begin_layout Plain Layout
+
+            ylabel={Time (sec)},
+\end_layout
+
+\begin_layout Plain Layout
+
+            title={CPU Timing with Increasing n},
+\end_layout
+
+\begin_layout Plain Layout
+
+            legend pos=north west,
+\end_layout
+
+\begin_layout Plain Layout
+
+            grid=both,
+\end_layout
+
+\begin_layout Plain Layout
+
+            width=
+\backslash
+columnwidth,
+\end_layout
+
+\begin_layout Plain Layout
+
+            height=0.75
+\backslash
+columnwidth,
+\end_layout
+
+\begin_layout Plain Layout
+
+            ymin=0.01,
+\end_layout
+
+\begin_layout Plain Layout
+
+            ymax=200,
+\end_layout
+
+\begin_layout Plain Layout
+
+            log basis x={10}
+\end_layout
+
+\begin_layout Plain Layout
+
+        ]
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+addplot[
+\end_layout
+
+\begin_layout Plain Layout
+
+            color=blue,
+\end_layout
+
+\begin_layout Plain Layout
+
+            mark=o,
+\end_layout
+
+\begin_layout Plain Layout
+
+            ] table [x=n, y=sdp_scs, col sep=comma] {imgs/data.csv};
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+addlegendentry{sdp scs}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+addplot[
+\end_layout
+
+\begin_layout Plain Layout
+
+            color=red,
+\end_layout
+
+\begin_layout Plain Layout
+
+            mark=triangle,
+\end_layout
+
+\begin_layout Plain Layout
+
+            ] table [x=n, y=riemann_so3, col sep=comma] {imgs/data.csv};
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+addlegendentry{riemann so(3)}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+addplot[
+\end_layout
+
+\begin_layout Plain Layout
+
+            color=green,
+\end_layout
+
+\begin_layout Plain Layout
+
+            mark=square,
+\end_layout
+
+\begin_layout Plain Layout
+
+            ] table [x=n, y=sdp_staircase, col sep=comma] {imgs/data.csv};
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+addlegendentry{sdp staircase}
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+addplot[
+\end_layout
+
+\begin_layout Plain Layout
+
+            color=purple,
+\end_layout
+
+\begin_layout Plain Layout
+
+            mark=diamond,
+\end_layout
+
+\begin_layout Plain Layout
+
+            ] table [x=n, y=se_sync, col sep=comma] {imgs/data.csv};
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+addlegendentry{se-sync}
+\end_layout
+
+\begin_layout Plain Layout
+
+        
+\backslash
+end{semilogxaxis}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+end{tikzpicture}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+caption{CPU Timing with Increasing n}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+label{fig:cpu_timing_scaling}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{figure}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+However, in our custom batch of tests, the situation is different.
+ In almost all cases, the bounds are not tight.
+ In these instances, the second algorithm, which relies on Riemannian optimizati
+on over a product of 
+\begin_inset Formula $\text{SO}\left(3\right)$
+\end_inset
+
+ manifolds, provides much better feasible solutions.
+ This is an interesting result, as this technique was not investigated in
+ the literature we reviewed.
+ Nonetheless, this algorithm does not scale as well as the SDP staircase
+ algorithm, even though both are based on Riemannian optimization.
+\end_layout
+
+\begin_layout Standard
+In robotics state estimation, the state of a robot typically includes not
+ just a vector but also rotations or poses.
+ In this context, Riemannian optimization is appealing as it can directly
+ operate on 
+\begin_inset Formula $\text{SO}\left(d\right),$
+\end_inset
+
+ 
+\begin_inset Formula $\text{SE}\left(d\right)$
+\end_inset
+
+ or Stiefel manifolds.
+ For Riemannian 
+\begin_inset Formula $\text{SO}\left(3\right)$
+\end_inset
+
+ optimization, we use a Conjugate Gradient (CG) algorithm with minimal customiza
+tion effort.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+begin{figure}[H] % Use H specifier to force placement here
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+centering
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+includegraphics[scale=0.4]{imgs/Q_tild.png}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+caption{Matrix Sparsity for Grid3D N=3}
+\end_layout
+
+\begin_layout Plain Layout
+
+    
+\backslash
+label{fig:Q_tild}
+\end_layout
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{figure}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As highlighted by the above figure, the 
+\begin_inset Formula $\tilde{Q}$
+\end_inset
+
+ matrix is very sparse, with values concentrated along the diagonal.
+ A preconditioner should be investigated to further enhance the scalability
+ of this algorithm 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "vuik2018krylov"
+literal "true"
+
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Section
+Conclusion
+\end_layout
+
+\begin_layout Standard
+In this study, we performed a comprehensive analysis of verification techniques
+ for Pose Graph Optimization.
+ We developed custom algorithm implementations and test sets to facilitate
+ an detailed evaluation.
+ Our benchmarking of various methods revealed that while standard Semidefinite
+ Programming (SDP) solvers are robust, they do not scale efficiently to
+ larger problems.
+ In contrast, the SDP staircase algorithm, leveraging Riemannian optimization
+ over Stiefel manifolds, offers an efficient approach for obtaining both
+ a quality certificate and a feasible solution.
+ Nevertheless, in cases where the quality certificate bounds are not tight,
+ the method based on Riemannian optimization over a product of SO(3) manifolds
+ consistently produces superior feasible solutions.
+ Future work will focus on deriving a preconditioner to enhance the convergence
+ speed of this method.
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+btprint "btPrintCited"
+bibfiles "project"
+options "unsrt"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

@@ -1,0 +1,724 @@
+#LyX 2.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 544
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass IEEEtran
+\begin_preamble
+
+%\usepackage[utf8]{inputenc} % allow utf-8 input
+%\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{smartdiagram}
+
+\usepackage{mathbbol}
+ 
+\usepackage{listings}
+\usepackage{xcolor}
+ 
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+ 
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+ 
+\lstset{style=mystyle}
+
+\usepackage{algorithm,algpseudocode}
+\end_preamble
+\use_default_options true
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_minted 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style english
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Duality based verification techniques for Pose Graph Optimization
+\end_layout
+
+\begin_layout Author
+pweinger@stanford.edu
+\end_layout
+
+\begin_layout Abstract
+This paper reviews duality-based verification techniques for Pose Graph
+ Optimization (PGO), focusing on the SE-Sync algorithm with Semidefinite
+ Programming (SDP) relaxations.
+ We propose to develop a custom SE-Sync implementation and detail the transforma
+tion of PGO into a relaxed SDP problem.
+ We aim to enhance comprehensibility by reformulating key steps from the
+ SE-Sync paper.
+ Additionally, we incorporate techniques from Cartan-Sync to solve the SDP
+ problem and investigate the impact of redundant constraints on certificate
+ tightness under increasing noise levels.
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+We consider the problem of Pose Graph Optimization (PGO), which consists
+ of estimating a set of poses, rotations, and translations from pairwise
+ relative pose measurements.
+ This problem is typically formulated as a maximum a posteriori (MAP) or
+ maximum-likelihood estimation (MLE) under an assumed probability distribution
+ for the measurement noise, which results in a nonlinear least squares problem.
+ Standard approaches to solving PGO employ iterative methods such as Gauss-Newto
+n or Levenberg-Marquardt, which achieve locally optimal solutions.
+ However, these methods do not guarantee the quality of the solution, as
+ convergence to different local optima can vary depending on the initial
+ conditions.
+ Ideally, we seek to understand how close we are to the global optimum and
+ whether further solution refinement is necessary, especially in safety-critical
+ applications.
+ 
+\end_layout
+
+\begin_layout Standard
+In the past decade, duality-based verification techniques for Simultaneous
+ Localization and Mapping (SLAM) have gained significant attention.
+ A notable advancement in this field is SE-Sync 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+: a certifiably correct algorithm for synchronization over the Special Euclidean
+ Group.
+ SE-Sync leverages Lagrangian duality 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "CvxOptim2004"
+literal "true"
+
+\end_inset
+
+ and Semidefinite Programming (SDP) 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "helmberg2000semidefinite"
+literal "true"
+
+\end_inset
+
+ relaxations to provide optimality bounds.
+ This paper reviews the prior work that led to the development of SE-Sync,
+ analyzes the SE-Sync algorithm itself, and discusses some of the remaining
+ challenges in 2024 related to duality-based verification techniques for
+ PGO.
+\end_layout
+
+\begin_layout Section
+Literature Review 
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "carlone2015duality"
+literal "true"
+
+\end_inset
+
+, Carlone and Dellaert present a technique to verify if a given 2D SLAM
+ solution is globally optimal.
+ They establish lower and upper bounds for the optimal solution, enabling
+ the assessment of the quality of any solution returned by an iterative
+ solver.
+ By re-parameterizing the rotation matrices 
+\begin_inset Formula $R_{i}\in\text{SO}\left(2\right)$
+\end_inset
+
+, they reformulate the initial nonlinear least-squares minimization problem
+ into a Quadratically Constrained Quadratic Programming (QCQP) minimization
+ problem.
+ They reduce the dimensionality of the problem by eliminating the position
+ vectors using the Schur complement.
+ Subsequently, they compute the dual problem of the QCQP, providing a method
+ to verify global optimality.
+\end_layout
+
+\begin_layout Standard
+Lagrangian duality theory provides two key insights: the dual problem is
+ always convex, regardless of the primal problem's nature, and the optimal
+ value of the dual problem offers a lower bound on the primal's optimal
+ value.
+ In cases where strong duality holds, this bound is tight.
+ The dual problem is an SDP (Semidefinite Programming) problem, solvable
+ by off-the-shell convex solvers.
+ Any feasible solution to the primal problem provides an upper bound for
+ the minimization problem, ensuring that the solution quality can be effectively
+ assessed.
+ Experimental results indicate that, in all tested cases, the bound provided
+ by the dual problem was tight, suggesting that strong duality may hold,
+ even if not formally proven.
+ 
+\end_layout
+
+\begin_layout Standard
+However, a significant challenge remains.
+ Pose Graph Optimization (PGO) is a large-scale problem requiring the estimation
+ of thousands of poses, making the dual SDP problem difficult for current
+ off-the-shelf solvers to handle efficiently.
+ With most real datasets, solving the SDP problem required approximately
+ one hour.
+ Despite the appealing quality of the certificate gap, the framework is
+ impractical for real-world application due to the scalability issues of
+ off-the-shelf SDP solvers.
+\end_layout
+
+\begin_layout Standard
+In a follow-up paper 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "carlonelagrangian"
+literal "true"
+
+\end_inset
+
+, the same authors generalize their approach to 3D SLAM.
+ In this work, while re-parameterizing the matrices in 
+\begin_inset Formula $\text{SO}\left(3\right)$
+\end_inset
+
+, they drop the constraint 
+\begin_inset Formula $\det\left(R\right)=1$
+\end_inset
+
+, leading to a QCQP minimization problem where the equality constraints
+ correspond to matrices being part of 
+\begin_inset Formula $\text{O}\left(3\right)$
+\end_inset
+
+ instead of 
+\begin_inset Formula $\text{SO}\left(3\right).$
+\end_inset
+
+ Consequently, the resulting bounds are looser.
+ However, given a candidate solution we can still check if a solution is
+ optimal and still provides a certificate gap, albeit a looser one.
+ Additionally, they introduce a technique to verify whether a candidate
+ solution is optimal without solving a large-scale SDP problem.
+ This method relies on solving a linear system and checking the positive
+ semi-definite nature of a matrix.
+ This test is fast, but the result is binary, qualifying a solution as optimal
+ or not, without providing bounds.
+ Experimental results demonstrate that the bounds are tight when the noise
+ level, modeled as a Gaussian isotropic noise 
+\begin_inset Formula $\mathcal{N}\left(0,\ \sigma_{R}^{2}I\right)$
+\end_inset
+
+, is below a certain threshold 
+\begin_inset Formula $\sigma_{R}=0.1$
+\end_inset
+
+.
+ However, the bounding gap increases as 
+\begin_inset Formula $\sigma_{R}$
+\end_inset
+
+ increases.
+ The certificate quality decreases with increasing noise levels.
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "briales2016fast"
+literal "true"
+
+\end_inset
+
+, Briales and Gonzalez-Jimenez improve upon the results from 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "carlonelagrangian"
+literal "true"
+
+\end_inset
+
+ by providing a novel formulation of the QCQP problem that results in smaller
+ matrices.
+ The previous work systematically uses the Kronecker product to transform
+ matrix products into vector products, resulting in each rotation matrix
+ producing a 
+\begin_inset Formula $9\times9$
+\end_inset
+
+ block.
+ In contrast, this paper employs a trace-based reformulation, keeping the
+ rotation matrices as 
+\begin_inset Formula $3\times3$
+\end_inset
+
+ blocks.
+ Additionally, some diagonal blocks corresponding to constant terms are
+ dropped, leading to sparser matrices.
+ This reformulation preserves the quality of the results while reducing
+ computation time by a factor of 50.
+ However, solving the SDP problem with more than 1000 poses remains prohibitivel
+y slow, requiring more than 15 minutes.
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "briales2017convex"
+literal "true"
+
+\end_inset
+
+, Briales and Gonzalez-Jimenez, and in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "brynte2022tightness"
+literal "true"
+
+\end_inset
+
+, Brynte et al.
+ consider the applicability of these techniques to different problems, including
+ the SLAM front-end.
+ They use these techniques for registration problems (e.g., point cloud registrati
+on) with point-to-point, point-to-line, and point-to-plane correspondences.
+ They also apply them to hand-eye calibration and rotation averaging, to
+ name a few.
+ The fewer poses to estimate, the smaller the SDP problem, and the more
+ applicable these techniques are.
+ 
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "briales2017convex"
+literal "true"
+
+\end_inset
+
+, the authors maintain the constraint 
+\begin_inset Formula $\det\left(R\right)=1$
+\end_inset
+
+ when deriving the QCQP formulation.
+ They replace the default cubic determinant constraint with quadratic constraint
+s in the form of three cross products 
+\begin_inset Formula $R^{\left(i\right)}\times R^{\left(j\right)}=R^{\left(k\right)}$
+\end_inset
+
+ for 
+\begin_inset Formula $i,j,k=\text{cyclic}\left(1,2,3\right)$
+\end_inset
+
+.
+ This ensures that each column of a rotation matrix adheres to the right-hand
+ rule, resulting in a rotation matrix instead of a reflection matrix.
+ Consequently, we have 9 additional constraints per rotation matrix.
+ Adding these constraints remarkably improves the quality of the duality
+ gap.
+ In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "briales2017convex"
+literal "true"
+
+\end_inset
+
+, the authors achieve tight experimental results regarding the duality gap.
+ This approach particularly applies to smaller-scale SDP problems, such
+ as those related to SLAM front-end processing.
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2017computational"
+literal "true"
+
+\end_inset
+
+, Rosen and Carlone design a custom SDP solver to enable fast, real-time
+ computations on large-scale PGO problem sets.
+ Solving the SDP problem requires finding an SDP matrix 
+\begin_inset Formula $Z=VV^{T}$
+\end_inset
+
+ of dimension 
+\begin_inset Formula $dn\times dn$
+\end_inset
+
+, where 
+\begin_inset Formula $d=3$
+\end_inset
+
+ and 
+\begin_inset Formula $n$
+\end_inset
+
+ corresponds to a few thousand poses.
+ However, in practice, the solution 
+\begin_inset Formula $Z$
+\end_inset
+
+ is of rank 
+\begin_inset Formula $r$
+\end_inset
+
+, not much greater than 
+\begin_inset Formula $d.$
+\end_inset
+
+ Thus, the main idea is to search for 
+\begin_inset Formula $Z=V_{nd\times r}V_{r\times nd}^{T}$
+\end_inset
+
+.
+ This approach dramatically reduces the search space size and renders the
+ positive semidefiniteness constraint redundant since 
+\begin_inset Formula $VV^{T}\succeq0$
+\end_inset
+
+ for any choice of 
+\begin_inset Formula $V.$
+\end_inset
+
+ Consequently, the rank-restricted form of the problem becomes a low-dimensional
+ nonlinear program instead of a semidefinite program.
+ In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "burer2003nonlinear"
+literal "true"
+
+\end_inset
+
+, Burer and Monteiro originally proposed a method to solve this problem
+ based on an augmented Lagrangian procedure.
+ However, Rosen, Carlone et al.
+ in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se,rosen2017computational"
+literal "true"
+
+\end_inset
+
+ adopt Riemannian optimization.
+ The problem we have to solve is of the form 
+\begin_inset Formula 
+\[
+\begin{array}{ccc}
+\underset{V\in\mathbb{R}^{dn\times r}}{\min} & \text{Tr}\left(CVV^{T}\right)\\
+s.t. & \text{Tr}\left(A_{i}VV^{T}\right)=b_{i} & i=1,\ldots,m
+\end{array}
+\]
+
+\end_inset
+
+The set 
+\begin_inset Formula 
+\[
+\mathcal{M}=\left\{ V\in\mathbb{R}^{dn\times r}\mid\text{Tr}\left(A_{i}VV^{T}\right)=b_{i},i=1,\ldots,m\right\} 
+\]
+
+\end_inset
+
+ is a smooth Riemannian manifold under certain conditions on 
+\begin_inset Formula $A_{i}$
+\end_inset
+
+, as explained by Majumdar et al.
+ in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "majumdar2020recent"
+literal "true"
+
+\end_inset
+
+.
+ The objective function 
+\begin_inset Formula $V\mapsto\text{Tr}\left(CVV^{T}\right)$
+\end_inset
+
+ is smooth, making this problem a Riemannian optimization problem.
+ If 
+\begin_inset Formula $m<\frac{r\left(r+1\right)}{2},$
+\end_inset
+
+ any second-order critical point is globally optimal and Riemannian trust-region
+ methods can return such a point.
+ These principles underpin the real-time SDP solver presented in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2017computational"
+literal "true"
+
+\end_inset
+
+.
+ In their experiments, the SE-Sync solution 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+, regularly enhanced by their research findings, outperformed 
+\begin_inset CommandInset href
+LatexCommand href
+name "GTSAM"
+target "https://gtsam.org/"
+literal "false"
+
+\end_inset
+
+ regarding speed while providing an optimality certificate.
+ This research culminated in the seminal paper on SE-Sync 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+, which has significantly influenced the field.
+ We have reviewed the origin and evolution of the key concepts described
+ in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+In 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "holmes2023semidefinite"
+literal "true"
+
+\end_inset
+
+, Holmes, Dümbgen and Barfoot emphasize that certifiable methods like SE-Sync
+ rely on simplifying assumptions to facilitate problem formulation, notably
+ assuming an isotropic measurement noise distribution.
+ They address a localization problem, specifically estimating a sequence
+ of poses based on measurements from known landmarks using stereo-camera
+ data.
+ The conversion of stereo pixels to Euclidean coordinates results in a noise
+ distribution that should not be modeled isotropically.
+ Consequently, the resulting maximum-likelihood optimization incorporates
+ matrix rather than scalar weighting factors.
+ Their experiments reveal that semidefinite relaxations were tight only
+ at lower noise levels when matrix weighting factors were used instead of
+ scalar ones.
+\end_layout
+
+\begin_layout Section
+Proposed Work
+\end_layout
+
+\begin_layout Standard
+We will develop a custom SE-Sync implementation in Python, created from
+ scratch, detailing the steps involved in transforming the original Pose
+ Graph Optimization (PGO) problem into the final relaxed SDP problem.
+ Our primary objective is to revisit Appendix B of the SE-Sync paper 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "rosen2019se"
+literal "true"
+
+\end_inset
+
+, reformulating the estimation problem from problem 1 to problem 7 in a
+ didactic manner.
+ This reformulation aims to enhance comprehensibility for a broader audience.
+ To solve the SDP problem, we plan to use 
+\begin_inset CommandInset href
+LatexCommand href
+name "pymanopt"
+target "https://pymanopt.org/"
+literal "false"
+
+\end_inset
+
+, a Python toolbox for optimization on Riemannian manifolds that supports
+ the truncated-Newton Riemannian trust-region (RTR) algorithm.
+ Additionally, we may adopt strategies from Cartan-Sync 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "briales2017cartan"
+literal "true"
+
+\end_inset
+
+, where Briales and Gonzalez-Jimenez demonstrate comparable performance
+ speeds to SE-Sync but relies less on problem-specific customizations.
+ The customization in Cartan-Sync is limited to a custom preconditioner.
+ For comparative benchmark results with various SDP solvers (MOSEK, SDPLR,
+ SDPNAL+, STRIDE, ManiSDP), we refer the reader to to Wang et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "wang2023solving"
+literal "true"
+
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Additionally, understanding the limitations of SDP relaxations under varying
+ noise levels is crucial.
+ It is known from 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "holmes2023semidefinite"
+literal "true"
+
+\end_inset
+
+ that the tightness of SDP relaxations may be lost when increasing the level
+ of noise.
+ However, as highlighted in 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "dumbgen2023toward"
+literal "true"
+
+\end_inset
+
+ and 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "holmes2023semidefinite"
+literal "true"
+
+\end_inset
+
+ by the same authors, in range-only localization and stereo camera localization
+ problems, the use of redundant constraints enabled to regain tightness.
+ Though redundant in the original problem formulation, these constraints
+ may become essential in the semidefinite relaxation formulation.
+ We will investigate the impact of redundant constraints in PGO, their effective
+ness in the presence of noise, and the implications on computation time.
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+btprint "btPrintCited"
+bibfiles "project"
+options "unsrt"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
